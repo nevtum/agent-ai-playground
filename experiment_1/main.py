@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from os import getenv
 
-load_dotenv()
+_ = load_dotenv()
 
 
 def main():

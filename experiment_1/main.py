@@ -1,5 +1,11 @@
+from dotenv import load_dotenv
+from os import getenv
+
+load_dotenv()
+
+
 def main():
-    print("Hello from agent-ai-playground!")
+    print(getenv("API_KEY"))
 
 
 if __name__ == "__main__":

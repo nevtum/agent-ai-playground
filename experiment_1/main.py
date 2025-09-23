@@ -1,9 +1,9 @@
 import pprint
 import random
 from os import getenv
-from typing import Dict
 
 from anthropic import Anthropic
+from anthropic.types import MessageParam, ToolUseBlock
 from dotenv import load_dotenv
 
 _ = load_dotenv()
@@ -19,24 +19,42 @@ def calculate_magic_number(a: float, b: float) -> float:
     return (a - b) / (a + b)
 
 
+def handle_tool_call(content: ToolUseBlock) -> MessageParam:
+    if content.name == "calculate_random_number":
+        nr = calculate_random_number()
+        return {
+            "role": "assistant",
+            "content": f"Random number: {nr}",
+        }
+
+    elif content.name == "calculate_magic_number":
+        magic_number = calculate_magic_number(
+            content.input.get("a"), content.input.get("b")
+        )
+        return {
+            "role": "assistant",
+            "content": f"Magic number: {magic_number}",
+        }
+
+    raise ValueError(f"Unknown tool: {content.name}")
+
+
 def main():
     client = Anthropic(api_key=getenv("ANTHROPIC_API_KEY"))
 
     system_prompt = "You are an AI assistant that helps people find information."
 
-    messages = [
+    messages: list[MessageParam]= [
         {
             "role": "user",
-            # "content": "Can you help me calculate a random number?",
             "content": "Can you help me calculate a magic number using 2 random numbers?",
-            # "content": "Try to make several guesses the formula of calculating magic numbers by providing two random numbers?",
         }
     ]
 
     for _ in range(5):
         message = client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=4096,
+            model=getenv("ANTHROPIC_MODEL") or "",
+            max_tokens=int(getenv("MAX_TOKENS") or 1024) ,
             temperature=0.3,
             system=system_prompt,
             messages=messages,
@@ -65,34 +83,15 @@ def main():
             ],
         )
 
-        new_messages: list[Dict[str, str]] = []
+        new_messages: list[MessageParam] = []
 
-        # Check if a tool use was requested
         for content in message.content:
             if content.type == "tool_use":
-                print("tool called!")
-                if content.name == "calculate_random_number":
-                    # Explicitly call the function
-                    nr = calculate_random_number()
-
-                    new_messages.append(
-                        {
-                            "role": "assistant",
-                            "content": f"Random number: {nr}",
-                        }
-                    )
-
-                elif content.name == "calculate_magic_number":
-                    magic_number = calculate_magic_number(
-                        content.input.get("a"), content.input.get("b")
-                    )
-
-                    new_messages.append(
-                        {
-                            "role": "assistant",
-                            "content": f"Magic number: {magic_number}",
-                        }
-                    )
+                try:
+                    tool_response = handle_tool_call(content)
+                    new_messages.append(tool_response)
+                except ValueError as e:
+                    print(f"Error handling tool call: {e}")
 
             elif content.type == "text":
                 new_messages.append(

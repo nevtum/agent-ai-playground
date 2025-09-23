@@ -99,8 +99,8 @@ def main():
                     }
                 )
 
-            pprint.pprint(new_messages)
-            messages.extend(new_messages)
+        pprint.pprint(new_messages)
+        messages.extend(new_messages)
 
     print("exited")
 

@@ -1,12 +1,10 @@
 import pprint
 import random
-from os import getenv
 
 from anthropic import Anthropic
 from anthropic.types import MessageParam, ToolUseBlock
-from dotenv import load_dotenv
 
-_ = load_dotenv()
+from .config import cfg
 
 
 def calculate_random_number() -> float:
@@ -40,11 +38,11 @@ def handle_tool_call(content: ToolUseBlock) -> MessageParam:
 
 
 def main():
-    client = Anthropic(api_key=getenv("ANTHROPIC_API_KEY"))
+    client = Anthropic(api_key=cfg.api_key)
 
-    system_prompt = "You are an AI assistant that helps people find information."
+    system_prompt = "You are an AI assistant that helps people perform tasks."
 
-    messages: list[MessageParam]= [
+    messages: list[MessageParam] = [
         {
             "role": "user",
             "content": "Can you help me calculate a magic number using 2 random numbers?",
@@ -53,9 +51,9 @@ def main():
 
     for _ in range(5):
         message = client.messages.create(
-            model=getenv("ANTHROPIC_MODEL") or "",
-            max_tokens=int(getenv("MAX_TOKENS") or 1024) ,
-            temperature=0.3,
+            model=cfg.model,
+            max_tokens=cfg.max_tokens,
+            temperature=cfg.temperature,
             system=system_prompt,
             messages=messages,
             tools=[

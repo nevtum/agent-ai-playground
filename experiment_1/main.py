@@ -40,7 +40,7 @@ def handle_tool_call(content: ToolUseBlock) -> MessageParam:
 def main():
     client = Anthropic(api_key=cfg.api_key)
 
-    system_prompt = f"You are an AI assistant that helps people calculate numbers. Provide only the answer requested and nothing else."
+    system_prompt = "You are an AI assistant that helps people calculate numbers. Provide only the answer requested and nothing else."
 
     messages: list[MessageParam] = [
         {

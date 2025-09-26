@@ -16,8 +16,8 @@ openai_client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
 class CrawlerAgent:
     system_prompt = dedent("""You are provided with a list of links found on a webpage.
-    You are able to decide which of the links would be most relevant to include in a brochure about the company,
-    such as links to an About page, or a Company page, or Careers/Jobs pages.
+    You are able to decide which of the links would be most relevant to include in market research about the company,
+    such as links to an About page, News/Events, a Company page, or Careers/Jobs pages.
     You should respond in JSON as in this example:
     {
         "links": [
@@ -52,15 +52,20 @@ class CrawlerAgent:
         return dedent(user_prompt)
 
     def get_all_details(self, url: str):
-        result = "Landing page:\n"
+        result = []
         site = Website(url)
-        result += site.get_contents()
+        result.append((site.url, site.get_contents()))
+
         links = self.get_relevant_links(site)
         print(f"{site.url} found links: {links}")
         for link in links["links"]:
-            result += f"\n\n{link['type']}\n"
-            result += Website(link["url"]).get_contents()
-        return result
+            link_site = Website(link["url"])
+            result.append((link_site.url, link_site.get_contents()))
+
+        text = "\n".join(
+            [f"**URL**: {url}\n**CONTENT**: {content}" for url, content in result]
+        )
+        return text
 
 
 class CompanyResearchAgent:
@@ -112,4 +117,4 @@ def main2():
 
 
 if __name__ == "__main__":
-    main1()
+    main2()

@@ -14,7 +14,7 @@ MODEL = "gpt-4o-mini"
 openai_client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
 
-class RelevantLinksAgent:
+class CrawlerAgent:
     system_prompt = dedent("""You are provided with a list of links found on a webpage.
     You are able to decide which of the links would be most relevant to include in a brochure about the company,
     such as links to an About page, or a Company page, or Careers/Jobs pages.
@@ -30,8 +30,7 @@ class RelevantLinksAgent:
     def __init__(self, model: str = MODEL) -> None:
         self.model = model
 
-    def get_relevant_links(self, url: str) -> list[dict[str, str]]:
-        website = Website(url)
+    def get_relevant_links(self, website: Website) -> list[dict[str, str]]:
         response = openai_client.chat.completions.create(
             model=self.model,
             messages=[
@@ -54,9 +53,10 @@ class RelevantLinksAgent:
 
     def get_all_details(self, url: str):
         result = "Landing page:\n"
-        result += Website(url).get_contents()
-        links = self.get_relevant_links(url)
-        print("Found links:", links)
+        site = Website(url)
+        result += site.get_contents()
+        links = self.get_relevant_links(site)
+        print(f"{site.url} found links: {links}")
         for link in links["links"]:
             result += f"\n\n{link['type']}\n"
             result += Website(link["url"]).get_contents()
@@ -70,8 +70,8 @@ class CompanyResearchAgent:
     Include details of company culture, customers and careers/jobs if you have the information.
     """)
 
-    def __init__(self, links_agent: RelevantLinksAgent, model: str = MODEL):
-        self.links_agent = links_agent
+    def __init__(self, crawler_agent: CrawlerAgent, model: str = MODEL):
+        self.crawler_agent = crawler_agent
         self.model = model
 
     def create_brochure(self, company_name: str, url: str):
@@ -91,15 +91,25 @@ class CompanyResearchAgent:
     def _get_brochure_user_prompt(self, company_name: str, url: str):
         user_prompt = f"""You are looking at a company called: {company_name}
 Here are the contents of its landing page and other relevant pages; use this information to build a short brochure of the company in markdown.
-{self.links_agent.get_all_details(url)}"""
+{self.crawler_agent.get_all_details(url)}"""
         user_prompt = user_prompt[:5_000]  # Truncate if more than 5,000 characters
         return dedent(user_prompt)
 
 
-if __name__ == "__main__":
+def main1():
+    crawler_agent = CrawlerAgent()
+    details = crawler_agent.get_all_details("https://www.hellofresh.com.au")
+    print(details)
+
+
+def main2():
     company_name = "HelloFresh"
     url = "https://www.hellofresh.com.au"
-    links_agent = RelevantLinksAgent()
-    brochure_agent = CompanyResearchAgent(links_agent)
+    crawler_agent = CrawlerAgent()
+    brochure_agent = CompanyResearchAgent(crawler_agent)
     res = brochure_agent.create_brochure(company_name, url)
     print(res)
+
+
+if __name__ == "__main__":
+    main1()

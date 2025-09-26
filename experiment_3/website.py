@@ -1,3 +1,4 @@
+from typing import override
 import requests
 from bs4 import BeautifulSoup
 
@@ -7,7 +8,8 @@ headers = {
 
 
 class Website:
-    def __init__(self, url):
+    def __init__(self, name, url):
+        self.name = name
         self.url = url
         response = requests.get(url, headers=headers)
         self.body = response.content
@@ -23,10 +25,13 @@ class Website:
         self.links = [link for link in links if link]
 
     def get_contents(self):
-        return f"Webpage Title:\n{self.title}\nWebpage Contents:\n{self.text}\n\n"
+        return f"Type:{self.name}\nWebpage Title:\n{self.title}\nWebpage Contents:\n{self.text}\n\n"
+
+    def __repr__(self) -> str:
+        return f"Website(url={self.url})"
 
 
 if __name__ == "__main__":
-    website = Website("https://www.uptickhq.com")
+    website = Website("Landing Page", "https://www.uptickhq.com")
     print(website.get_contents())
     print(website.links)

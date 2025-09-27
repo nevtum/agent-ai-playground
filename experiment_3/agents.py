@@ -1,10 +1,10 @@
 import json
+from collections import deque
 from os import getenv
 from textwrap import dedent
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from collections import deque
 
 from .website import Website
 
@@ -53,7 +53,7 @@ class CrawlerAgent:
         {"\n".join(map(str, website.links))}"""
         return dedent(user_prompt)
 
-    def get_all_details(self, url: str):
+    def crawl_pages(self, url: str) -> list[tuple[str, str]]:
         result = []
 
         site = Website("Landing Page", url)
@@ -80,11 +80,56 @@ class CrawlerAgent:
             visited.add(site.url)
 
         print(f"A total of {len(result)} pages were crawled. Visited={visited}")
+        return result
+
+    def get_all_details(self, url: str):
+        result = self.crawl_pages(url)
 
         text = "\n".join(
             [f"**URL**: {url}\n**CONTENT**: {content}" for url, content in result]
         )
         return text
+
+
+class PageSummarizerAgent:
+    system_prompt = dedent("""You are an assistant that analyzes the contents of a website \
+    and provides a short summary, ignoring text that might be navigation related. \
+    Respond in markdown.
+    """)
+
+    def __init__(self, model: str = MODEL) -> None:
+        self.model = MODEL
+
+    def summarize(self, page_name: str, content: str):
+        print(f"Summarizing content for {page_name}")
+        response = openai_client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {
+                    "role": "user",
+                    "content": self._user_prompt(page_name, content),
+                },
+            ],
+        )
+        result = response.choices[0].message.content
+        return result
+
+    def _user_prompt(self, page_name: str, content: str) -> str:
+        prompt = f"""
+        You are looking at a page '{page_name}'. \
+        The contents from this page is as follows;
+        {content} \n\n
+        please summarize this page in markdown. \
+        If it includes news or announcements, then summarize these too.\n\n
+
+        You should respond with the results like this example:
+        ===
+        # Page: {page_name}
+        # Content:
+        summary goes here...
+        """
+        return dedent(prompt)
 
 
 class CompanyResearchAgent:
@@ -95,6 +140,7 @@ class CompanyResearchAgent:
     """)
 
     def __init__(self, *, crawler_agent: CrawlerAgent, model: str = MODEL):
+        self.summarizer = PageSummarizerAgent()
         self.crawler_agent = crawler_agent
         self.model = model
 
@@ -105,7 +151,7 @@ class CompanyResearchAgent:
                 {"role": "system", "content": self.system_prompt},
                 {
                     "role": "user",
-                    "content": self._get_brochure_user_prompt(company_name, url),
+                    "content": self._get_brochure_user_prompt_v2(company_name, url),
                 },
             ],
         )
@@ -120,6 +166,18 @@ Here are the contents of its landing page and other relevant pages; use this inf
         user_prompt = user_prompt[:5_000]  # Truncate if more than 5,000 characters
         return dedent(user_prompt)
 
+    def _get_brochure_user_prompt_v2(self, company_name: str, url: str):
+        summary = ""
+
+        for link, content in self.crawler_agent.crawl_pages(url):
+            summary += f"{self.summarizer.summarize(link, content)}\n"
+
+        user_prompt = dedent(f"""You are looking at a company called: {company_name} \
+        Here are the contents of its landing page and other relevant pages; \
+        use this information to build a short brochure of the company in markdown.
+        {summary}""")
+        return user_prompt
+
 
 def main1():
     crawler_agent = CrawlerAgent()
@@ -128,13 +186,21 @@ def main1():
 
 
 def main2():
+    crawler_agent = CrawlerAgent(max_hops=0)
+    result = crawler_agent.crawl_pages("https://www.hellofresh.com.au")
+    summarizer = PageSummarizerAgent()
+    details = summarizer.summarize(result[0][0], result[0][1])
+    print(details)
+
+
+def main3():
     company_name = "HelloFresh"
     url = "https://www.hellofresh.com.au"
-    crawler_agent = CrawlerAgent(max_hops=1)
+    crawler_agent = CrawlerAgent(max_hops=2)
     brochure_agent = CompanyResearchAgent(crawler_agent=crawler_agent)
     res = brochure_agent.create_brochure(company_name, url)
     print(res)
 
 
 if __name__ == "__main__":
-    main2()
+    main3()

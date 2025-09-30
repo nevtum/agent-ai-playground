@@ -1,17 +1,46 @@
+from pathlib import Path
 import ollama
+
+from .tools import call_tool, tools
+import logging
+
+logging.basicConfig()
 
 
 def main():
     messages = [
         {
+            "role": "system",
+            "content": (Path(__file__).parent / "prompt.txt").read_text(),
+        },
+        {
             "role": "user",
-            "content": "Describe some of the business applications of Generative AI",
-        }
+            "content": "describe each file in this directory?",
+        },
     ]
     MODEL = "llama3.2"
 
-    response = ollama.chat(model=MODEL, messages=messages)
-    print(response["message"]["content"])
+    for response in ollama.chat(
+        model=MODEL, tools=tools, messages=messages, stream=True
+    ):
+        if "tool_calls" in response["message"]:
+            result = call_tool(
+                response["message"]["tool_calls"][0]["function"]["name"],
+                **response["message"]["tool_calls"][0]["function"]["arguments"],
+            )
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": result,
+                }
+            )
+
+    for response in ollama.chat(
+        model=MODEL, tools=tools, messages=messages, stream=True
+    ):
+        print(response["message"]["content"], end="", flush=True)
+
+    print("\n\nfinished\n")
 
 
 if __name__ == "__main__":

@@ -21,22 +21,29 @@ def main():
     MODEL = "llama3.2"
 
     for response in ollama.chat(
-        model=MODEL, tools=tools, messages=messages, stream=True
+        model=MODEL,
+        tools=tools,
+        messages=messages,
+        stream=True,
     ):
         if "tool_calls" in response["message"]:
-            result = call_tool(
-                response["message"]["tool_calls"][0]["function"]["name"],
-                **response["message"]["tool_calls"][0]["function"]["arguments"],
-            )
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": result,
-                }
-            )
+            for tool_call in response["message"]["tool_calls"]:
+                result = call_tool(
+                    tool_call["function"]["name"],
+                    **tool_call["function"]["arguments"],
+                )
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": result,
+                    }
+                )
 
     for response in ollama.chat(
-        model=MODEL, tools=tools, messages=messages, stream=True
+        model=MODEL,
+        tools=tools,
+        messages=messages,
+        stream=True,
     ):
         print(response["message"]["content"], end="", flush=True)
 

@@ -45,6 +45,8 @@ def main():
         messages=messages,
         stream=True,
     ):
+        if "tool_calls" in response["message"]:
+            raise ValueError("not expected!")
         print(response["message"]["content"], end="", flush=True)
 
     print("\n\nfinished\n")

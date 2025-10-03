@@ -4,6 +4,7 @@ from pathlib import Path
 
 import ollama
 
+from .response import OllamaStreamingResponse
 from .tools import call_tool, tools
 
 logger = logging.getLogger(__name__)
@@ -30,8 +31,8 @@ class Agent:
         for tool_call in tool_calls:
             try:
                 result = call_tool(
-                    tool_call["function"]["name"],
-                    **tool_call["function"]["arguments"],
+                    tool_call[0],
+                    **tool_call[1],
                 )
                 self.conversation.append(
                     {
@@ -40,9 +41,7 @@ class Agent:
                     }
                 )
             except Exception as e:
-                logger.error(
-                    f"Error calling tool {tool_call['function']['name']}: {str(e)}"
-                )
+                logger.error(f"Error calling tool {tool_call[0]}: {str(e)}")
                 self.conversation.append(
                     {
                         "role": "assistant",
@@ -62,15 +61,16 @@ class Agent:
                 messages=self.conversation,
                 stream=True,
             )
-            for response in stream:
-                if "tool_calls" in response["message"]:
-                    tool_calls = response["message"]["tool_calls"]
-                else:
-                    yield response["message"]["content"]
+            for raw_response in stream:
+                response = OllamaStreamingResponse(raw_response)
+                yield response.content()
+                if response.has_tool_calls():
+                    tool_calls.extend(response.tools_list())
 
-            if not tool_calls:
-                break
+            if tool_calls:
+                self.execute_tool(tool_calls)
+                continue
 
-            self.execute_tool(tool_calls)
+            break
 
         yield "\n"

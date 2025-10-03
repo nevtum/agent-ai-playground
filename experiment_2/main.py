@@ -1,8 +1,10 @@
+import logging
 from pathlib import Path
+
 import ollama
 
+from .response import OllamaStreamingResponse
 from .tools import call_tool, tools
-import logging
 
 logging.basicConfig()
 
@@ -32,21 +34,20 @@ def main():
         while True:
             tool_results = []
 
-            for response in ollama.chat(
+            for raw_response in ollama.chat(
                 model=MODEL,
                 tools=tools,
                 messages=messages,
                 stream=True,
             ):
-                if "tool_calls" in response["message"]:
-                    for tool_call in response["message"]["tool_calls"]:
-                        result = call_tool(
-                            tool_call["function"]["name"],
-                            **tool_call["function"]["arguments"],
-                        )
+                response = OllamaStreamingResponse(raw_response)
+
+                print(response.content(), end="", flush=True)
+
+                if response.has_tool_calls():
+                    for tool_name, tool_args in response.tools_list():
+                        result = call_tool(tool_name, **tool_args)
                         tool_results.append(result)
-                else:
-                    print(response["message"]["content"], end="", flush=True)
 
             if not tool_results:
                 break

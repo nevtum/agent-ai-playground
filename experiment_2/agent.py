@@ -1,8 +1,10 @@
+import logging
 from collections.abc import Generator
 from pathlib import Path
-from .tools import tools, call_tool
+
 import ollama
-import logging
+
+from .tools import call_tool, tools
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

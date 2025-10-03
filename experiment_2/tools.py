@@ -1,9 +1,7 @@
-from textwrap import dedent
-from .permissions import human_gate
-
-
 import subprocess
 from textwrap import dedent
+
+from .permissions import human_gate
 
 
 @human_gate

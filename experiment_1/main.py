@@ -1,5 +1,5 @@
-import pprint
 import random
+from textwrap import dedent
 
 from anthropic import Anthropic
 from anthropic.types import MessageParam, ToolUseBlock
@@ -12,9 +12,9 @@ def calculate_random_number() -> float:
     return random.random()
 
 
-def calculate_magic_number(a: float, b: float) -> float:
-    """Calculate a magic number based on two floats."""
-    return (a - b) / (a + b)
+def calculate_magic_number(a: float, b: float, c: float) -> float:
+    """Calculate a magic number based on three floats."""
+    return (a - b) / (a + b) + c
 
 
 def handle_tool_call(content: ToolUseBlock) -> MessageParam:
@@ -26,9 +26,7 @@ def handle_tool_call(content: ToolUseBlock) -> MessageParam:
         }
 
     elif content.name == "calculate_magic_number":
-        magic_number = calculate_magic_number(
-            content.input.get("a"), content.input.get("b")
-        )
+        magic_number = calculate_magic_number(**content.input)
         return {
             "role": "assistant",
             "content": f"Magic number: {magic_number}",
@@ -40,16 +38,21 @@ def handle_tool_call(content: ToolUseBlock) -> MessageParam:
 def main():
     client = Anthropic(api_key=cfg.api_key)
 
-    system_prompt = "You are an AI assistant that helps people calculate numbers. Provide only the answer requested and nothing else."
+    system_prompt = dedent("""
+        You are an AI assistant that helps people calculate numbers. \
+        Describe the plan how you will answer the question then \
+        execute on that plan. Provide only the answer requested and \
+        nothing else.
+        """)
 
     messages: list[MessageParam] = [
         {
             "role": "user",
-            "content": "Can you help me calculate a magic number using 2 random numbers? Output the final calculation in <result></result>",
+            "content": "Can you help me calculate a magic number using a series of random numbers? Output the final calculation in <result></result>",
         }
     ]
 
-    for _ in range(5):
+    while True:
         message = client.messages.create(
             model=cfg.model,
             max_tokens=cfg.max_tokens,
@@ -68,39 +71,45 @@ def main():
                 },
                 {
                     "name": "calculate_magic_number",
-                    "description": "Calculates a magic number based on two floats",
+                    "description": "Calculates a magic number based on three floats",
                     "input_schema": {
                         "type": "object",
                         "properties": {
                             "a": {"type": "number"},
                             "b": {"type": "number"},
+                            "c": {"type": "number"},
                         },
-                        "required": ["a", "b"],
+                        "required": ["a", "b", "c"],
                     },
                 },
             ],
         )
 
-        new_messages: list[MessageParam] = []
+        tool_calls: list[ToolUseBlock] = []
 
         for content in message.content:
             if content.type == "tool_use":
-                try:
-                    tool_response = handle_tool_call(content)
-                    new_messages.append(tool_response)
-                except ValueError as e:
-                    print(f"Error handling tool call: {e}")
-
+                tool_calls.append(content)
             elif content.type == "text":
-                new_messages.append(
+                print(content.text)
+                messages.append(
                     {
                         "role": "assistant",
                         "content": content.text,
                     }
                 )
 
-        pprint.pprint(new_messages)
-        messages.extend(new_messages)
+        if tool_calls:
+            for content in tool_calls:
+                try:
+                    tool_response = handle_tool_call(content)
+                    print(tool_response)
+                    messages.append(tool_response)
+                except ValueError as e:
+                    print(f"Error handling tool call: {e}")
+            continue
+
+        break
 
     print("exited")
 

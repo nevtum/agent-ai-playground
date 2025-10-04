@@ -12,3 +12,5 @@ wheels/
 # Config files
 .env
 .zed
+.ruff_cache
+.pytest_cache

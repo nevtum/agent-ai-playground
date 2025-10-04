@@ -10,7 +10,7 @@ from .website import Website
 
 _ = load_dotenv()
 
-MODEL = "gpt-4o-mini"
+MODEL = getenv("OPENAI_MODEL")
 
 openai_client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 

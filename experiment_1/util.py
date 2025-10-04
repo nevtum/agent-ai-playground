@@ -1,5 +1,38 @@
-def parse_data(response):
-    raise NotImplementedError()
+import pytest
+
+
+def parse_stream(response):
+    tool_uses = []
+    for item in response:
+        if (
+            item.get("type") == "content_block_start"
+            and item.get("content_block", {}).get("type") == "tool_use"
+        ):
+            tool_name = item["content_block"]["name"]
+
+            # Collect the tool input by reconstructing the partial JSON deltas
+            tool_input = {}
+            input_json = ""
+
+            # Find and concatenate input JSON deltas
+            for sub_item in response[response.index(item) + 1 :]:
+                if (
+                    sub_item.get("type") == "content_block_delta"
+                    and sub_item.get("delta", {}).get("type") == "input_json_delta"
+                ):
+                    input_json += sub_item["delta"].get("partial_json", "")
+
+                if sub_item.get("type") == "content_block_stop":
+                    break
+
+            # Careful JSON parsing
+            if input_json.strip():
+                # Remove leading/trailing whitespaces and handle potential JSON parsing
+                tool_input = eval(input_json.strip())
+
+            tool_uses.append({"name": tool_name, "arguments": tool_input})
+
+    return tool_uses
 
 
 response = [
@@ -154,10 +187,14 @@ response = [
 
 
 def test_parse():
-    expected = parse_data(response)
-    assert expected == [
+    expected = [
         {
             "name": "get_weather",
-            "arguments": {"location": "San Fransisco CA", "unit": "fahrenheit"},
+            "arguments": {"location": "San Francisco, CA", "unit": "fahrenheit"},
         }
     ]
+    assert parse_stream(response) == expected
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-vv"])

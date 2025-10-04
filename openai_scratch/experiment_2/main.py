@@ -1,9 +1,19 @@
+import logging
+
 from .agent import Agent
+
+logging.basicConfig()
 
 
 def main():
     agent = Agent()
-    print(agent.send_message("What are your skills?"))
+
+    while True:
+        question = input("User: ")
+        response = agent.send_message(question)
+        print(response)
+
+    print("finished")
 
 
 if __name__ == "__main__":

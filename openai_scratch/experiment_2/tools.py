@@ -22,20 +22,22 @@ def call_tool(name, **kwargs) -> str:
         return f"Unknown tool: {name}"
 
 
-TOOLS = {
-    "type": "function",
-    "name": "call_system_command",
-    "description": "Executes a system command in the shell and returns the output or error message.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "command": {
-                "type": "string",
-                "description": "The system command to execute.",
-            }
+TOOLS = [
+    {
+        "type": "function",
+        "name": "call_system_command",
+        "description": "Executes a system command in the shell and returns the output or error message.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The system command to execute.",
+                }
+            },
+            "required": ["command"],
+            "additionalProperties": False,
         },
-        "required": ["command"],
-        "additionalProperties": False,
-    },
-    "strict": True,
-}
+        "strict": True,
+    }
+]

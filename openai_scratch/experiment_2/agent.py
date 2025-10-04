@@ -1,8 +1,11 @@
-from dotenv import load_dotenv
+import json
 from os import getenv
-from openai import OpenAI
 from pathlib import Path
-from .tools import call_tool, TOOLS
+
+from dotenv import load_dotenv
+from openai import OpenAI
+
+from .tools import TOOLS, call_tool
 
 _ = load_dotenv()
 
@@ -11,12 +14,20 @@ MODEL: str = getenv("OPENAI_MODEL") or "gpt-4o-mini"
 openai_client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
 
+def make_message(role: str, content: str) -> dict[str, str]:
+    return {"role": role, "content": content}
+
+
 def make_system_prompt(prompt: str) -> dict[str, str]:
-    return {"role": "system", "content": prompt}
+    return make_message("system", prompt)
 
 
 def make_user_prompt(prompt: str) -> dict[str, str]:
-    return {"role": "user", "content": prompt}
+    return make_message("user", prompt)
+
+
+def output_text(text: str):
+    print(text, end="", flush=True)
 
 
 class Agent:
@@ -27,29 +38,50 @@ class Agent:
         self.messages = [make_system_prompt(self.system_prompt)]
 
     def send_message(self, text: str):
+        # output_text(text)
         self.messages.append(make_user_prompt(text))
 
-        response = openai_client.chat.completions.create(
-            model=self.model,
-            # tools=TOOLS,
-            temperature=0.3,
-            messages=self.messages,
-        )
+        while True:
+            tool_calls = []
+            reply = ""
+            # print(self.messages)
 
-        result = response.choices[0].message.content
-        return result
+            response = openai_client.responses.create(
+                model=self.model,
+                tools=TOOLS,
+                temperature=0.3,
+                input=self.messages,
+            )
 
-        # for item in response.output:
-        #     if item.type == "function_call":
-        #         if item.name == "get_horoscope":
-        #             # 3. Execute the function logic for get_horoscope
-        #             horoscope = get_horoscope(json.loads(item.arguments))
+            for item in response.output:
+                if item.type == "function_call":
+                    tool_calls.append(item)
+                elif item.type == "message":
+                    for content in item.content:
+                        # output_text(content.text)
+                        reply += content.text
+                else:
+                    raise Exception("Unexpected output type")
 
-        #             # 4. Provide function call results to the model
-        #             input_list.append({
-        #                 "type": "function_call_output",
-        #                 "call_id": item.call_id,
-        #                 "output": json.dumps({
-        #                   "horoscope": horoscope
-        #                 })
-        #             })
+            if tool_calls:
+                for tool in tool_calls:
+                    self.messages.append(
+                        {
+                            "type": "function_call",
+                            "call_id": tool.call_id,
+                            "name": tool.name,
+                            "arguments": tool.arguments,
+                        }
+                    )
+                    result = call_tool(tool.name, **json.loads(tool.arguments))
+                    # output_text(result)
+                    self.messages.append(
+                        {
+                            "type": "function_call_output",
+                            "call_id": tool.call_id,
+                            "output": result,
+                        }
+                    )
+                continue
+
+            return reply

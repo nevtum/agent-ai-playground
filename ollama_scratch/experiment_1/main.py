@@ -3,9 +3,9 @@ from pathlib import Path
 
 import ollama
 
+from .agent import Agent
 from .response import OllamaStreamingResponse
 from .tools import call_tool, tools
-from .agent import Agent
 
 logging.basicConfig()
 

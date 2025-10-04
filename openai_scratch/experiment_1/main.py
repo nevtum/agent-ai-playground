@@ -1,4 +1,4 @@
-from .agents import CrawlerAgent, PageSummarizerAgent, CompanyResearchAgent
+from .agents import CompanyResearchAgent, CrawlerAgent, PageSummarizerAgent
 
 
 def main1():

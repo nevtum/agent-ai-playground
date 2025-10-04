@@ -4,6 +4,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from openai.types.responses import ResponseFunctionToolCall
 
 from .tools import TOOLS, call_tool
 
@@ -26,10 +27,6 @@ def make_user_prompt(prompt: str) -> dict[str, str]:
     return make_message("user", prompt)
 
 
-def output_text(text: str):
-    print(text, end="", flush=True)
-
-
 class Agent:
     system_prompt: str = (Path(__file__).parent / "prompt.txt").read_text()
 
@@ -38,13 +35,11 @@ class Agent:
         self.messages = [make_system_prompt(self.system_prompt)]
 
     def send_message(self, text: str):
-        # output_text(text)
         self.messages.append(make_user_prompt(text))
 
         while True:
-            tool_calls = []
-            reply = ""
-            # print(self.messages)
+            tool_calls: list[ResponseFunctionToolCall] = []
+            reply: list[str] = []
 
             response = openai_client.responses.create(
                 model=self.model,
@@ -58,8 +53,7 @@ class Agent:
                     tool_calls.append(item)
                 elif item.type == "message":
                     for content in item.content:
-                        # output_text(content.text)
-                        reply += content.text
+                        reply.append(content.text)
                 else:
                     raise Exception("Unexpected output type")
 
@@ -74,7 +68,6 @@ class Agent:
                         }
                     )
                     result = call_tool(tool.name, **json.loads(tool.arguments))
-                    # output_text(result)
                     self.messages.append(
                         {
                             "type": "function_call_output",
@@ -84,4 +77,4 @@ class Agent:
                     )
                 continue
 
-            return reply
+            return "".join(reply)

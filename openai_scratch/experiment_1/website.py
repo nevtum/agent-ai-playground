@@ -31,6 +31,6 @@ class Website:
 
 
 if __name__ == "__main__":
-    website = Website("Landing Page", "https://www.uptickhq.com")
+    website = Website("Landing Page", "https://www.hellofresh.com.au")
     print(website.get_contents())
     print(website.links)

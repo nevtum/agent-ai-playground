@@ -6,19 +6,20 @@ from .permissions import human_gate
 
 @human_gate
 def call_system_command(command: str) -> str:
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    if result.returncode != 0:
-        return dedent(f"""
-        Error: {result.stderr.strip()}
-        """)
-    return result.stdout.strip()
+    try:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        if result.returncode != 0:
+            return dedent(f"Error: {result.stderr.strip()}")
+        return result.stdout.strip()
+    except Exception as ex:
+        return f"Failed to call system command: {ex}"
 
 
 def call_tool(name, **kwargs) -> str:
     if name == call_system_command.__name__:
         return call_system_command(command=kwargs["command"])
     else:
-        raise ValueError(f"Unknown tool: {name}")
+        return f"Unknown tool: {name}"
 
 
 tools = [

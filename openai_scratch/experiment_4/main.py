@@ -18,16 +18,13 @@ appears in the chart and output a list of (x, y) datapoints \
 and other relevant data requested."""
 
 
-def encode_image(filename: str) -> dict:
+def encode_image(filename: str) -> str:
     current_dir = Path(__file__).parent
     filepath = current_dir / filename
 
     with open(str(filepath), "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-        return {
-            "type": "image_url",
-            "image_url": {"url": f"data:image/webp;base64,{encoded_string}"},
-        }
+        return encoded_string
 
 
 def evaluate_image(filename: str):
@@ -40,7 +37,12 @@ def evaluate_image(filename: str):
                     "type": "text",
                     "text": "Extract title and data from this image: ",
                 },
-                encode_image(filename),
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/webp;base64,{encode_image(filename)}"
+                    },
+                },
             ],
         },
     ]

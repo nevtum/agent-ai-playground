@@ -1,5 +1,7 @@
 DEFAULT_PROMPT_KEY = "Socratic Questioning"
 
+generic_assistant = {"Assistant": "You are a helpful assistant."}
+
 socratic_system_prompt = {
     "Socratic Questioning": """
 Ask me a series of Socratic questions to test whether my belief or \
@@ -27,6 +29,7 @@ a perfect score of 10 isn't provided.
 
 
 PROMPTS: dict[str, str] = {
+    **generic_assistant,
     **socratic_system_prompt,
     **devops_system_prompt,
 }

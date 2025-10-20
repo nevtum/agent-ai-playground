@@ -18,13 +18,13 @@ def main2():
 def main3():
     company_name = "HelloFresh"
     url = "https://www.hellofresh.com.au"
-    crawler_agent = CrawlerAgent(max_hops=2)
+    crawler_agent = CrawlerAgent(max_hops=1)
     brochure_agent = CompanyResearchAgent(crawler_agent=crawler_agent)
     res = brochure_agent.create_brochure(company_name, url)
     print(res)
 
 
 if __name__ == "__main__":
-    main1()
+    # main1()
     # main2()
-    # main3()
+    main3()

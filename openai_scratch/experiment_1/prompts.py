@@ -1,8 +1,10 @@
 from textwrap import dedent
 
+from .website import Website
 
-class CrawlerPrompts:
-    system = dedent("""You are provided with a list of links found on a webpage.
+
+class WebCrawling:
+    system_prompt = dedent("""You are provided with a list of links found on a webpage.
     You are able to decide which of the links would be most relevant to include in market research about the company,
     such as links to an About page, News/Events, a Company page, or Careers/Jobs pages.
     You should respond in JSON as in this example:
@@ -21,9 +23,15 @@ class CrawlerPrompts:
     Links (some might be relative links):
     {links}""")
 
+    @classmethod
+    def user_prompt(cls, website: Website) -> str:
+        return cls.user.format(
+            url=website.url, links="\n".join(map(str, website.links))
+        )
 
-class CompanyResearchPrompts:
-    system = dedent("""
+
+class CompanyResearch:
+    system_prompt = dedent("""
     You are an assistant that analyzes the contents of several relevant pages from a company website \
     and creates a short brochure about the company for prospective customers, investors and recruits. Respond in markdown.\
     Include details of company culture, customers and careers/jobs if you have the information.
@@ -34,9 +42,13 @@ class CompanyResearchPrompts:
     use this information to build a short brochure of the company in markdown.
     {summary}""")
 
+    @classmethod
+    def user_prompt(cls, company_name: str, summary: str):
+        return cls.user.format(company_name=company_name, summary=summary)
 
-class PageSummarizerPrompts:
-    system = dedent("""You are an assistant that analyzes the contents of a website \
+
+class PageSummarization:
+    system_prompt = dedent("""You are an assistant that analyzes the contents of a website \
     and provides a short summary, ignoring text that might be navigation related. \
     Respond in markdown.
     """)
@@ -54,3 +66,7 @@ class PageSummarizerPrompts:
     # Content:
     summary goes here...
     """)
+
+    @classmethod
+    def user_prompt(cls, page_name: str, content: str):
+        return cls.user.format(page_name=page_name, content=content)

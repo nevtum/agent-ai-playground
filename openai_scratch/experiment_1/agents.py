@@ -2,11 +2,11 @@ import json
 from collections import deque
 from os import getenv
 from textwrap import dedent
-from .prompts import CompanyResearchPrompts, CrawlerPrompts, PageSummarizerPrompts
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from .prompts import CompanyResearch, PageSummarization, WebCrawling
 from .website import Website
 
 _ = load_dotenv()
@@ -25,18 +25,13 @@ class CrawlerAgent:
         response = openai_client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": CrawlerPrompts.system},
-                {"role": "user", "content": self._get_links_user_prompt(website)},
+                {"role": "system", "content": WebCrawling.system_prompt},
+                {"role": "user", "content": WebCrawling.user_prompt(website)},
             ],
             response_format={"type": "json_object"},
         )
         result = response.choices[0].message.content
         return json.loads(result)
-
-    def _get_links_user_prompt(self, website: Website) -> str:
-        return CrawlerPrompts.user.format(
-            url=website.url, links="\n".join(map(str, website.links))
-        )
 
     def crawl_pages(self, url: str) -> list[tuple[str, str]]:
         result = []
@@ -85,18 +80,15 @@ class PageSummarizerAgent:
         response = openai_client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": PageSummarizerPrompts.system},
+                {"role": "system", "content": PageSummarization.system_prompt},
                 {
                     "role": "user",
-                    "content": self._user_prompt(page_name, content),
+                    "content": PageSummarization.user_prompt(page_name, content),
                 },
             ],
         )
         result = response.choices[0].message.content
         return result
-
-    def _user_prompt(self, page_name: str, content: str) -> str:
-        return PageSummarizerPrompts.user.format(page_name=page_name, content=content)
 
 
 class CompanyResearchAgent:
@@ -109,7 +101,7 @@ class CompanyResearchAgent:
         response = openai_client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": CompanyResearchPrompts.system},
+                {"role": "system", "content": CompanyResearch.system_prompt},
                 {
                     "role": "user",
                     "content": self._get_brochure_user_prompt_v2(company_name, url),
@@ -133,6 +125,4 @@ Here are the contents of its landing page and other relevant pages; use this inf
         for link, content in self.crawler_agent.crawl_pages(url):
             summary += f"{self.summarizer.summarize(link, content)}\n"
 
-        return CompanyResearchPrompts.user.format(
-            company_name=company_name, summary=summary
-        )
+        return CompanyResearch.user_prompt(company_name, summary)

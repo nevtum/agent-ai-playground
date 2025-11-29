@@ -1,7 +1,9 @@
 import json
+import re
 from collections import deque
 from os import getenv
 from textwrap import dedent
+from venv import logger
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -11,6 +13,7 @@ from .website import Website
 
 _ = load_dotenv()
 
+regex = r"^(https?://)?([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,})?)(:[0-9]+)?(/.*)?$"
 MODEL = getenv("OPENAI_MODEL") or "gpt-4o-mini"
 
 openai_client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
@@ -53,9 +56,17 @@ class CrawlerAgent:
                 links = self.get_relevant_links(site)
 
                 for link in links["links"]:
-                    if link["url"] not in visited:
-                        print(f"Adding {link['url']} to queue. Distance={distance + 1}")
-                        queue.append((distance + 1, Website(link["type"], link["url"])))
+                    if link["url"] not in visited and self.is_valid_link(link["url"]):
+                        try:
+                            print(
+                                f"Adding {link['url']} to queue. Distance={distance + 1}"
+                            )
+                            queue.append(
+                                (distance + 1, Website(link["type"], link["url"]))
+                            )
+                        except:
+                            logger.warning(f"Unable to resolve {link['url']}")
+                            continue
 
             visited.add(site.url)
 
@@ -69,6 +80,9 @@ class CrawlerAgent:
             [f"**URL**: {url}\n**CONTENT**: {content}" for url, content in result]
         )
         return text
+
+    def is_valid_link(self, link: str) -> bool:
+        return re.match(regex, link) is not None
 
 
 class PageSummarizerAgent:

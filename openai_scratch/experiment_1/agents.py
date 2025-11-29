@@ -24,19 +24,24 @@ class CrawlerAgent:
         self.model = model
         self.max_hops = max_hops
 
-    def get_relevant_links(self, website: Website) -> list[dict[str, str]]:
+    def get_relevant_links(
+        self, company_name: str, website: Website
+    ) -> list[dict[str, str]]:
         response = openai_client.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": WebCrawling.system_prompt},
-                {"role": "user", "content": WebCrawling.user_prompt(website)},
+                {
+                    "role": "user",
+                    "content": WebCrawling.user_prompt(company_name, website),
+                },
             ],
             response_format={"type": "json_object"},
         )
         result = response.choices[0].message.content
         return json.loads(result)
 
-    def crawl_pages(self, url: str) -> list[tuple[str, str]]:
+    def crawl_pages(self, company_name: str, url: str) -> list[tuple[str, str]]:
         result = []
 
         site = Website("Landing Page", url)
@@ -53,7 +58,7 @@ class CrawlerAgent:
             result.append((site.url, site.get_contents()))
 
             if distance < self.max_hops:
-                links = self.get_relevant_links(site)
+                links = self.get_relevant_links(company_name, site)
 
                 for link in links["links"]:
                     if link["url"] not in visited and self.is_valid_link(link["url"]):
@@ -73,8 +78,8 @@ class CrawlerAgent:
         print(f"A total of {len(result)} pages were crawled. Visited={visited}")
         return result
 
-    def get_all_details(self, url: str):
-        result = self.crawl_pages(url)
+    def get_all_details(self, company_name: str, url: str):
+        result = self.crawl_pages(company_name, url)
 
         text = "\n".join(
             [f"**URL**: {url}\n**CONTENT**: {content}" for url, content in result]
@@ -102,6 +107,7 @@ class PageSummarizerAgent:
             ],
         )
         result = response.choices[0].message.content
+        print(result)
         return result
 
 
@@ -128,7 +134,7 @@ class CompanyResearchAgent:
     def _get_brochure_user_prompt(self, company_name: str, url: str):
         user_prompt = f"""You are looking at a company called: {company_name}
 Here are the contents of its landing page and other relevant pages; use this information to build a short brochure of the company in markdown.
-{self.crawler_agent.get_all_details(url)}"""
+{self.crawler_agent.get_all_details(company_name, url)}"""
 
         user_prompt = user_prompt[:5_000]  # Truncate if more than 5,000 characters
         return dedent(user_prompt)
@@ -136,7 +142,7 @@ Here are the contents of its landing page and other relevant pages; use this inf
     def _get_brochure_user_prompt_v2(self, company_name: str, url: str):
         summary = ""
 
-        for link, content in self.crawler_agent.crawl_pages(url):
+        for link, content in self.crawler_agent.crawl_pages(company_name, url):
             summary += f"{self.summarizer.summarize(link, content)}\n"
 
         return CompanyResearch.user_prompt(company_name, summary)
